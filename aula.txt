@@ -1,0 +1,69 @@
+--- > Function
+
+#r "Newtonsoft.Json"
+
+using System.Net;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Primitives;
+using Newtonsoft.Json;
+using SendGrid;
+using SendGrid.Helpers.Mail;
+
+public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
+{
+    try
+    {
+        log.LogInformation("Entrou na API de envio de email ativada por um HTTP Trigger.");
+
+        if (req.Method == HttpMethods.Post)
+        {
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            ContactModel contactModel = JsonConvert.DeserializeObject<ContactModel>(requestBody);
+
+            var apiKey = Environment.GetEnvironmentVariable("SEND_GRID_KEY");
+            var client = new SendGridClient(apiKey);
+            var from = new EmailAddress("contato@azurenapratica.com", "Azure na Prática");
+            var subject = contactModel.Subject;
+            var to = new EmailAddress(contactModel.Email, contactModel.Name);
+            var msg = MailHelper.CreateSingleEmail(from, to, subject, contactModel.Message, contactModel.Message);
+            var response = await client.SendEmailAsync(msg);
+
+            if(response.StatusCode == System.Net.HttpStatusCode.Accepted)
+            {
+                return new OkObjectResult($"E-mail enviado com sucesso.");
+            }
+
+            return new BadRequestObjectResult("Erro ao enviar email.");
+        }
+    }
+    catch (Exception ex)
+    {
+        log.LogError(ex, ex.Message);
+    }
+
+    return null;    
+}
+
+    public class ContactModel
+    {
+        public string Name { get; set; }
+        public string Email { get; set; }
+        public string Subject { get; set; }
+        public string Message { get; set; }
+    }
+    
+    
+    function.proj 
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Sendgrid" Version="9.12.0" />
+    </ItemGroup>
+</Project>
+
+Variaveis na Web App
+Services:SendMail - https://functionazurenapratica.azurewebsites.net/api/SendEmail2
+Services:StorageAccount: https://anpcommerce00.blob.core.windows.net/wwwroot
